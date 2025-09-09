@@ -1,0 +1,42 @@
+{
+  "name": "FCS_app_v2",
+  "homepage": "https://bmpms.github.io/FCS_app_v2",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "export": "next export",
+    "predeploy": "next build",
+    "deploy": "gh-pages -d out --nojekyll"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@fortawesome/fontawesome-pro": "^6.7.2",
+    "clipper-lib": "^6.4.2",
+    "d3": "^7.9.0",
+    "d3-voronoi-treemap": "^1.1.2",
+    "graphology": "^0.26.0",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "seedrandom": "^3.0.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/concaveman": "^1.1.6",
+    "@types/d3": "^7.4.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/seedrandom": "^3.0.8",
+    "eslint": "^9.26.0",
+    "eslint-config-next": "15.2.4",
+    "gh-pages": "^6.3.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
