@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import {Network} from "../../types/data";
+import {Network, TreeData, VoronoiNode} from "../../types/data";
 import {COLORS} from "@/app/components/MainForceChart";
 import {measureWidth} from "@/app/components/ChainForceChart_functions";
 
@@ -11,6 +11,7 @@ export const drawNetworkMap = (
     svgWidth: number,
     svgHeight: number,
     containerClass: string,
+    mainContainerClass: string,
     labelFontSize: number
 
 ) => {
@@ -68,7 +69,7 @@ export const drawNetworkMap = (
         .attr("dy",labelFontSize * 0.7)
         .attr("font-size",labelFontSize * 0.6)
         .attr("fill",COLORS.black)
-        .text((d) => `Layer ${d[0]}`)
+        .text((d) => d[0] === -1 || d[0] === 4? "Computations" :`Layer ${d[0]}`)
         .attr("transform", (d) => `translate(0,${yScale(d[0] || 0)})`);
 
 
@@ -84,7 +85,22 @@ export const drawNetworkMap = (
 
     const networkRectHeight = labelFontSize;
 
-    networkGroup.attr("transform", (d) => `translate(${networkPositions[d.network].x},${networkPositions[d.network].y})`)
+    networkGroup
+        .attr("transform", (d) => `translate(${networkPositions[d.network].x},${networkPositions[d.network].y})`)
+        .on("mousemove", (event, d) => {
+            const mainGraphSvg = d3.select(`.svg_${mainContainerClass}`);
+            if(mainGraphSvg.node()){
+                mainGraphSvg.selectAll<SVGPathElement, VoronoiNode<TreeData>>(".voronoiPath")
+                    .attr("fill", (v) =>  v.parent && v.parent.data.name === d.network ? COLORS.midgrey : "white")
+            }
+        })
+        .on("mouseout", () => {
+            const mainGraphSvg = d3.select(`.svg_${mainContainerClass}`);
+            if(mainGraphSvg.node()) {
+                mainGraphSvg.selectAll(".voronoiPath")
+                    .attr("fill", "white");
+            }
+        })
 
     networkGroup.select(".networkRect")
         .attr("stroke-width", 0)

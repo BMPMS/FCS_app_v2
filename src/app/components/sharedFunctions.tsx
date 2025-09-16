@@ -2,6 +2,8 @@ import {ChainLink, ChartLink} from "@/types/data";
 import * as d3 from "d3";
 import {ARROW_END_PATH, ARROW_START_PATH, ARROW_VIEWBOX, COLORS} from "@/app/components/MainForceChart";
 
+export const getRemInPixels = () =>  parseFloat(getComputedStyle(document.documentElement).fontSize)
+
 export const getLinkId = (link: ChartLink | ChainLink , direction: "source" | "target") => {
     const node = link[direction];
     if(typeof node === "string") return node;

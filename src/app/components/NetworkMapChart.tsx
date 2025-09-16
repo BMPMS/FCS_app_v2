@@ -94,7 +94,7 @@ const ChainForceChart: FC<NetworkMapChartProps> = ({
 
         const totalNodes = d3.sum(networkNodes, (d) => d.nodes.length);
         const {labelFontSize} = getNodeRadiusAndLabelSize(mainChartWidth, mainChartHeight - MAIN_CHART_PANEL_HEIGHT, totalNodes)
-        drawNetworkMap(svg,networkNodes,networkLinks,layerMapper, svgWidth,svgHeight,containerClass,labelFontSize)
+        drawNetworkMap(svg,networkNodes,networkLinks,layerMapper, svgWidth,svgHeight,containerClass,mainContainerClass,labelFontSize)
 
     }, [containerClass, chartData,architectureId, mainContainerClass,tick]);
 

@@ -68,7 +68,14 @@ export const ARROW_START_PATH = "M9,-4L1,0L9,4";
 export const ARROW_END_PATH = "M1, -4L9,0L1,4";
 export const ARROW_VIEWBOX = "0 -5 10 10";
 
-export const ICONS = {zoomFit:"\uf0b2",zoomOut:"\uf010",zoomIn:"\uf00e", locked:"\uf023", unlocked:"\uf3c1"};
+export const ICONS = {
+    zoomFit:"\uf0b2",
+    zoomOut:"\uf010",
+    zoomIn:"\uf00e",
+    collapsed:"\uf054",
+    expanded:"\uf078",
+    tick: "\uf00c"
+};
 
 export const MAIN_CHART_PANEL_HEIGHT = 45;
 export const NODE_FILL_OPACITY_START = 0.3;

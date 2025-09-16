@@ -1,7 +1,9 @@
-import React from 'react';
-import ChainForceChart from "@/app/components/ChainForceChart";
+'use client';
+import React, {useState} from 'react';
 import {ChartData} from "@/types/data";
 import NetworkMapChart from "@/app/components/NetworkMapChart";
+import SearchResultsCriteriaChart from "@/app/components/SearchResultsCriteriaChart";
+import ChainChartHeader from "@/app/components/ChainChartHeader";
 
 interface SearchResultsPanelProps {
     chartData: ChartData;
@@ -10,22 +12,41 @@ interface SearchResultsPanelProps {
     architectureId: number;
     mainContainerClass: string;
     chainContainerClass: string;
+    removeFromSearchNodes: (currentSelection: string) => void;
 }
-const SearchResultsPanel = ({ chartData,searchNodes,searchDirection, architectureId , mainContainerClass, chainContainerClass}: SearchResultsPanelProps) => {
+const SearchResultsPanel = ({ chartData,searchNodes,searchDirection, architectureId , mainContainerClass, chainContainerClass, removeFromSearchNodes}: SearchResultsPanelProps) => {
+
+    const [resultPanelHeight, setResultPanelHeight] = useState<number>(0);
 
     const ChartComponent = ()  => {
-
+        const resultAreaHeight = Math.min(resultPanelHeight,65);
         if (searchNodes.length > 0) {
             return (
                 <>
-                <div className={"absolute w-full h-60px top-[60px] bg-pink-300"}>search criteria</div>
-                <div  style={{width:"100%", height:"calc(100vh - 95px)", overflow: "auto"}} className={`${chainContainerClass}Container absolute   top-[90px]`}>
-                     <ChainForceChart  mainContainerClass={mainContainerClass} containerClass={chainContainerClass} chartData={chartData} searchNodes={searchNodes} searchDirection={searchDirection} architectureId={architectureId}/>
+                <div style={{height: `${Math.min(resultPanelHeight,55)}px`, overflowY:"auto" }}
+                     className={"top-0 left-[calc(55%+10px)] w-[calc(45%-20px)] searchResultsContainer absolute md:h-0 md:w-full md:top-[60px] md:left-0 "}>
+                    <SearchResultsCriteriaChart
+                        containerClass={"searchResultsContainer"}
+                        currentSelected={searchNodes}
+                        removeFromCurrentSelected={removeFromSearchNodes}
+                        setResultPanelHeight={setResultPanelHeight}
+                    />
+                </div>
+                <div style={{height: `calc(100% - ${resultAreaHeight + 60}px)`,  top: `${60 + resultAreaHeight}px`, }} className={`${chainContainerClass}Container absolute w-full m:h-full `}>
+                    <ChainChartHeader
+                        containerClass={chainContainerClass}
+                        mainContainerClass={mainContainerClass}
+                        chartData={chartData}
+                        searchNodes={searchNodes}
+                        searchDirection={searchDirection}
+                        architectureId={architectureId}
+                        resultPanelHeight={resultPanelHeight}
+                    />
                 </div>
                 </>)
         }
 
-        return (<div className={`${chainContainerClass}Container absolute h-[calc(100%-20px)]  w-[calc(45%-20px)] top-[10px] left-[calc(55%+10px)] md:h-[50%] md:top-[calc(50%-30px)] md:w-[calc(100%-60px)] md:left-[30px] overflow-y-auto`}>
+        return (<div className={`${chainContainerClass}Container absolute h-full  w-[calc(45%-20px)] top-[10px] left-[calc(55%+10px)] md:h-[50%] md:top-[calc(50%-30px)] md:w-[calc(100%-60px)] md:left-[30px] overflow-y-auto`}>
             <NetworkMapChart containerClass={chainContainerClass} mainContainerClass={mainContainerClass} chartData={chartData} architectureId={architectureId}></NetworkMapChart>
         </div>)
 

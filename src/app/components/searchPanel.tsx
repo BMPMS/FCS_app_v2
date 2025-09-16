@@ -1,20 +1,22 @@
 import React, { useState, ChangeEvent, useRef, useEffect } from "react";
 import '../globals.css';
+import SearchResultsHierarchyChart from "@/app/components/SearchResultsHierarchyChart";
 
 interface SearchPanelProps {
-    updateSearchResult: (queries: string[], direction: string) => void;
     className: string;
     searchOptions: { inputs: string[], outputs: string[] };
+    searchNodes: string[];
+    setSearchNodes:  React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export default function SearchPanel({
-                                        updateSearchResult,
                                         className,
-                                        searchOptions
+                                        searchOptions,
+                                        searchNodes,
+                                        setSearchNodes
                                     }: SearchPanelProps) {
 
     const [query, setQuery] = useState("");
-    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
     const [toggleOpen, setToggleOpen] = useState(false);
     const [placeholder, setPlaceholder] = useState("Search inputs");
     const [currentSearchOptions, setCurrentSearchOptions] = useState(searchOptions["inputs"]);
@@ -26,29 +28,12 @@ export default function SearchPanel({
 
     const panelRef = useRef<HTMLDivElement>(null); // ref for outside click
 
-    const currentDirection = toggleOpen ? "output" : "input";
-
     const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setQuery(value);
         setShowOptions(value !== "");
     };
 
-    const handleToggleOption = (option: string) => {
-        const isSelected = selectedOptions.includes(option);
-        const newSelected = isSelected
-            ? selectedOptions.filter(o => o !== option)
-            : [...selectedOptions, option];
-
-        setSelectedOptions(newSelected);
-        updateSearchResult(newSelected, currentDirection);
-
-        // If last selected option was removed, hide options
-        if (isSelected && newSelected.length === 0) {
-            setShowOptions(false);
-            setQuery(""); // Optional: clear input as well
-        }
-    };
 
     const handleToggleOpen = () => {
         const newDirection = !toggleOpen;
@@ -58,9 +43,7 @@ export default function SearchPanel({
         setCurrentSearchOptions(newOptions);
         setQuery("");
         setShowOptions(false);
-        setSelectedOptions([]);
-        updateSearchResult([], newDirection ? "output" : "input");
-
+        setSearchNodes([]);
     };
 
     // Hide dropdown when clicking outside the panel
@@ -80,25 +63,39 @@ export default function SearchPanel({
 
     // Separate and sort selected and unselected filtered options
     const filteredSelected = currentSearchOptions
-        .filter(opt => selectedOptions.includes(opt) && opt.toLowerCase().includes(query.toLowerCase()));
+        .filter(opt => searchNodes.includes(opt) && opt.toLowerCase().includes(query.toLowerCase()));
     const filteredUnselected = currentSearchOptions
-        .filter(opt => !selectedOptions.includes(opt) && opt.toLowerCase().includes(query.toLowerCase()));
+        .filter(opt => !searchNodes.includes(opt) && opt.toLowerCase().includes(query.toLowerCase()));
 
     const finalOptions = [...filteredSelected, ...filteredUnselected];
+
+
+    const updatedCurrentSelected = (newSelection: string) => {
+        if (!searchNodes.includes(newSelection)) {
+            const newResults = searchNodes.concat(newSelection);
+            setSearchNodes(newResults)
+        } else {
+            const filteredResults = searchNodes.filter((f) => f !== newSelection);
+            setSearchNodes(filteredResults);
+        }
+        setQuery("");
+        setShowOptions(false);
+
+    }
+
 
     return (
         <div
             ref={panelRef}
-            className={`fixed w-[calc(55%-60px)] top-[calc(50%+10px)] left-[45px] md:w-[calc(35%-60px)] md:top-[20px] md:left-[80px]  bg-white border border-gray-300 rounded shadow   ${className}`}
+            className={`searchContainer fixed w-[calc(55%-60px)] top-[calc(50%+10px)] left-[45px] md:w-[calc(35%-60px)] md:top-[20px] md:left-[80px]  bg-white border border-gray-300 rounded shadow   ${className}`}
         >
-            <div className="flex items-center h-[25px] w-full">
+            <div className="flex items-center h-[35px] w-full">
                 <input
                     type="text"
                     placeholder={placeholder}
                     value={query}
                     onChange={handleInputChange}
-                    onFocus={() =>  setShowOptions(true)}
-                    className="flex-grow h-full px-2 text-sm outline-none"
+                    className="flex-grow h-full px-2 text-base outline-none"
                 />
                 <button
                     type="button"
@@ -112,26 +109,9 @@ export default function SearchPanel({
                     />
                 </button>
             </div>
-
+            <hr className={"border-t border-gray-300"} />
             {showOptions && finalOptions.length > 0 && (
-                <ul className="mt-1 max-h-40 overflow-auto border border-gray-300 rounded bg-white shadow-sm text-sm">
-                    {finalOptions.map(option => {
-                        const isSelected = selectedOptions.includes(option);
-                        return (
-                            <li
-                                key={option}
-                                onClick={() => handleToggleOption(option)}
-                                className={`cursor-pointer px-3 py-1 flex items-center justify-between 
-                                    ${isSelected ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'}`}
-                            >
-                                <span>{option}</span>
-                                {isSelected && (
-                                    <i className="fa-solid fa-check text-green-500 text-xs ml-2" />
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
+                <SearchResultsHierarchyChart containerClass={"searchContainer"} searchStr={query} searchResults={finalOptions} currentSelected={filteredSelected} updateCurrentSelected={updatedCurrentSelected}/>
             )}
         </div>
     );

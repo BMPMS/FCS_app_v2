@@ -37,45 +37,12 @@
       "type": "any",
       "class": "output",
       "desc": "node d from comp2"
-    },
-    {
-      "node": "computation3",
-      "type": "comp",
-      "class": "output",
-      "desc": "#include <stdio>\\nvoid computation()\\n{\\n  turn_on_motor();\\n}\\n"
-    },
-    {
-      "node": "nodee",
-      "type": "any",
-      "class": "input",
-      "desc": "trigger comp3"
-    },
-    {
-      "node": "computation4",
-      "type": "comp",
-      "class": "output",
-      "desc": "#include <stdio>\\nvoid computation()\\n{\\n  turn_off_motor();\\n}\\n"
-    },
-    {
-      "node": "nodef",
-      "type": "any",
-      "class": "input",
-      "desc": "trigger comp4"
-    },
-    {
-      "node": "nodeg",
-      "type": "any",
-      "class": "input",
-      "desc": "trigger comp4"
     }
   ],
   "links": [
     { "source": "computation1", "target": "nodea", "type": "standard" },
     { "source": "computation1", "target": "nodeb", "type": "standard" },
     { "source": "computation2", "target": "nodec", "type": "standard" },
-    { "source": "computation2", "target": "noded", "type": "standard" },
-    { "source": "nodee", "target": "computation3", "type": "standard" },
-    { "source": "nodef", "target": "computation4", "type": "standard" },
-    { "source": "nodeg", "target": "computation4", "type": "standard" }
+    { "source": "computation2", "target": "noded", "type": "standard" }
   ]
 }

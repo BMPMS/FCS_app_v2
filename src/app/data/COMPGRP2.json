@@ -1,0 +1,41 @@
+{
+  "network": "COMPGRP2",
+  "network_desc": "Group 2 Computation Functions",
+  "nodes": [
+    {
+      "node": "computation3",
+      "type": "comp",
+      "class": "output",
+      "desc": "#include <stdio>\\nvoid computation()\\n{\\n  turn_on_motor();\\n}\\n"
+    },
+    {
+      "node": "nodee",
+      "type": "any",
+      "class": "input",
+      "desc": "trigger comp3"
+    },
+    {
+      "node": "computation4",
+      "type": "comp",
+      "class": "output",
+      "desc": "#include <stdio>\\nvoid computation()\\n{\\n  turn_off_motor();\\n}\\n"
+    },
+    {
+      "node": "nodef",
+      "type": "any",
+      "class": "input",
+      "desc": "trigger comp4"
+    },
+    {
+      "node": "nodeg",
+      "type": "any",
+      "class": "input",
+      "desc": "trigger comp4"
+    }
+  ],
+  "links": [
+    { "source": "nodee", "target": "computation3", "type": "standard" },
+    { "source": "nodef", "target": "computation4", "type": "standard" },
+    { "source": "nodeg", "target": "computation4", "type": "standard" }
+  ]
+}

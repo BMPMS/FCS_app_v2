@@ -349,7 +349,21 @@ export const drawVoronoiTree = (
         .attr("stroke", gapFill)
         .attr("stroke-width", (d) => (d.depth === 1 ? 10 : 4))
         .attr("fill", (d) => (d.depth > 1 ? "transparent" : networkFill))
-        .attr("transform",`translate(${margins.left},${margins.top})`);
+        .attr("transform",`translate(${margins.left},${margins.top})`)
+        .on("mousemove", (event, d) => {
+            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
+            if(chainGraphSVG.node()){
+                chainGraphSVG.selectAll<SVGPathElement, NetworkNode>(".networkRect")
+                    .attr("fill", (n) =>  d.parent && n.network === d.parent.data.name ? COLORS.midgrey : "white")
+            }
+        })
+        .on("mouseout", () => {
+            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
+            if(chainGraphSVG.node()) {
+                chainGraphSVG.selectAll(".networkRect")
+                    .attr("fill", "white");
+            }
+        });
 
     const voronoiLabelHeight = labelFontSize * 0.95;
 
@@ -413,6 +427,7 @@ export const drawVoronoiTree = (
             enter.append("text").attr("class", "fa networkNodeIcon");
             enter.append("circle").attr("class", "networkChainNode");
             enter.append("text").attr("class", "fa networkChainNodeIcon");
+            enter.append("text").attr("class", "networkChainNodeLabel");
 
             return enter;
         });
@@ -515,6 +530,16 @@ export const drawVoronoiTree = (
         .text((d) => d.node.id.split("-")[0])
         .attr("transform",`translate(${margins.left},${margins.top})`);
 
+    networkNodeGroup.select(".networkChainNodeLabel")
+        .attr("pointer-events","none")
+        .attr("opacity", 0)
+        .attr("fill", COLORS.black)
+        .attr("text-anchor","middle")
+        .attr("font-size", 10)
+        .style("dominant-baseline","middle")
+        .attr("dy",CHAIN_CIRCLE_RADIUS + (10 * 0.65))
+        .text((d) => d.node.id.split("-")[0])
+        .attr("transform",`translate(${margins.left},${margins.top})`);
 
     simulation
         .on("tick", () => {

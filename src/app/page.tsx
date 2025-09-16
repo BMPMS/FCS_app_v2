@@ -3,7 +3,8 @@
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@fortawesome/fontawesome-pro/css/all.min.css';
 import ARCH from "@/app/data/ARCHnew.json";
-import COMPGRP1 from "@/app/data/COMPGRP1.json"
+import COMPGRP1 from "@/app/data/COMPGRP1.json";
+import COMPGRP2 from "@/app/data/COMPGRP2.json";
 import CN from "@/app/data/CN.json";
 import MFON from "@/app/data/MFON.json";
 import MIN from "@/app/data/MIN.json";
@@ -83,6 +84,7 @@ const chartData: ChartData =  {
     architecture: ARCH.architectures,
     networks: [
         {id: "COMPGRP1",data: addProps(COMPGRP1)},
+        {id: "COMPGRP2",data: addProps(COMPGRP2)},
         {id: "CN",data: addProps(CN)},
         {id: "OEN",data: addProps(OEN)},
         {id: "OFON",data: addProps(OFON)},
@@ -148,6 +150,10 @@ export default  function Home() {
        setSearchNodes(searchNodes);
        setSearchDirection(searchDirection);
     }
+    const removeFromSearchNodes = (currentSelection: string) => {
+        const filteredSearchNodes = searchNodes.filter((f) => f !== currentSelection);
+        handleSearchResult(filteredSearchNodes,searchDirection);
+    }
 
   return (
       <>
@@ -155,8 +161,6 @@ export default  function Home() {
           <div className={` ${mainDivClass}Container fixed w-full h-[50%] top-0 left-0 md:w-[calc(65%-50px)] md:h-full md:left-[calc(35%+50px)] bg-white`}>
               <MainForceChart searchNodes={searchNodes} chartData={chartData} architectureId={architectureId} containerClass={mainDivClass} chainContainerClass={chainDivClass} />
           </div>
-
-
           {/* Side Panel toggle icon (desktop) */}
           <div className="hidden md:block absolute top-0 left-0 h-full w-[50px] bg-gray-800 z-10">
               <MenuToggleGroup  setPanelOpen={setPanelOpen}  containerClass="mt-[10px] ml-[10px]"/>
@@ -168,14 +172,23 @@ export default  function Home() {
               {/* Search Panel */}
               <SearchPanel
                   searchOptions={searchData}
-                  updateSearchResult={handleSearchResult}
+                  searchNodes={searchNodes}
+                  setSearchNodes={setSearchNodes}
                   className="w-[260px]" // optional overrides
               />
           </div>
           {/* SidePanel - only visible on menu click */}
           <SidePanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} architectures={architectures} updateArchitectureId={updateArchitectureId}/>
           {/* SearchResultsPanel - only visible on selecting valid search result */}
-          <SearchResultsPanel chainContainerClass={chainDivClass} mainContainerClass = {mainDivClass} chartData={chartData} searchNodes={searchNodes} searchDirection={searchDirection} architectureId={architectureId}></SearchResultsPanel>
+          <SearchResultsPanel
+              chainContainerClass={chainDivClass}
+              mainContainerClass = {mainDivClass}
+              chartData={chartData}
+              searchNodes={searchNodes}
+              searchDirection={searchDirection}
+              architectureId={architectureId}
+              removeFromSearchNodes={removeFromSearchNodes}
+          ></SearchResultsPanel>
       </>
 
   );

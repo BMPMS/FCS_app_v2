@@ -13,19 +13,20 @@
   {"layer":1,"network":"OEN"}, 
   {"layer":2,"network":"PPN"},    
   {"layer":3,"network":"PPON"},    
-  {"layer":3,"network":"OFON"}    
-  ],
+  {"layer":3,"network":"OFON"} ,
+  {"layer":  4, "network":"COMPGRP2"}
+],
 "computations":[
-  {"network":"COMPGRP1"}    
-  ],
+  {"network":"COMPGRP1"},{"network":"COMPGRP2"}
+],
 "routes":[
   {"source_net":"COMPGRP1","source_node":"nodea","dest_net":"OIN","dest_node":"atBoxBin"}, 
   {"source_net":"COMPGRP1","source_node":"nodeb","dest_net":"OIN","dest_node":"boxBinReady"}, 
   {"source_net":"COMPGRP1","source_node":"nodec","dest_net":"OIN","dest_node":"atDoughBin"}, 
   {"source_net":"COMPGRP1","source_node":"noded","dest_net":"OIN","dest_node":"doughBinReady"}, 
-  {"source_net":"PPON","source_node":"startTimeOutTimerOutput","dest_net":"COMPGRP1","dest_node":"nodee"}, 
-  {"source_net":"PPON","source_node":"moveToNeutralOutput","dest_net":"COMPGRP1","dest_node":"nodef"}, 
-  {"source_net":"PPON","source_node":"openDoorOutput","dest_net":"COMPGRP1","dest_node":"nodeg"}, 
+  {"source_net":"PPON","source_node":"startTimeOutTimerOutput","dest_net":"COMPGRP2","dest_node":"nodee"},
+  {"source_net":"PPON","source_node":"moveToNeutralOutput","dest_net":"COMPGRP2","dest_node":"nodef"},
+  {"source_net":"PPON","source_node":"openDoorOutput","dest_net":"COMPGRP2","dest_node":"nodeg"},
   {"source_net":"OIN","source_node":"atBoxBinOutput","dest_net":"CN","dest_node":"atBoxBin"}, 
   {"source_net":"OIN","source_node":"boxBinReadyOutput","dest_net":"CN","dest_node":"boxBinReady"}, 
   {"source_net":"OIN","source_node":"boxBinEmptyOutput","dest_net":"CN","dest_node":"boxBinEmpty"}, 

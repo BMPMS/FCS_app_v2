@@ -468,7 +468,8 @@ export const drawChainForce = (
     searchNodes: string[],
     containerClass: string,
     mainContainerClass: string,
-    currentGraph: Graph<Attributes, Attributes, Attributes>
+    currentGraph: Graph<Attributes, Attributes, Attributes>,
+    svgHeight: number
 ) => {
     const flowModeSelectedNodes: string[] = [];
     const flowMode = false;
@@ -527,6 +528,7 @@ export const drawChainForce = (
     // transparent path for label
     nodesGroup
         .select(".nodeLabelPath")
+        .attr("pointer-events","none")
         .attr("fill", "transparent")
         .attr("id", (d) => `labelCircle${d.id}`)
         .attr("d",
@@ -540,6 +542,7 @@ export const drawChainForce = (
     // label
     nodesGroup
         .select(".nodeLabelTextPath")
+        .attr("pointer-events","none")
         .attr("opacity", (d) => searchNodes.includes(d.id) ? 1 : 0)
         .attr("startOffset", "25%")
         .style("letter-spacing","-0.5px")
@@ -563,7 +566,7 @@ export const drawChainForce = (
 
         if(mainGraphSvg.node()) {
 
-            debugger;
+
             mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".networkChainNode")
                 .attr("opacity",(n) => allAncestors.includes(n.node.id) || ancestors.includes(n.node.id) ?  1 : 0)
                 .attr("fill", (n) => allAncestors.includes(n.node.id) ? COLORS.gold :
@@ -574,8 +577,11 @@ export const drawChainForce = (
             mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".networkChainNodeIcon")
                 .attr("opacity",(n) => allAncestors.includes(n.node.id) || ancestors.includes(n.node.id) ?  1 : 0)
 
+            mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".networkChainNodeLabel")
+                .attr("opacity",(n) => allAncestors.includes(n.node.id)  ?  1 : 0)
+
             mainGraphSvg.selectAll<SVGGElement, NetworkNode>(".networkNodeGroup")
-                .attr("opacity", (n) => ancestors.includes(n.node.id) ? 1 :
+                .attr("opacity", (n) => allAncestors.includes(n.node.id) || ancestors.includes(n.node.id) ? 1 :
                    0)
 
             mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".linkPath").attr("opacity",0);
@@ -584,7 +590,15 @@ export const drawChainForce = (
                 .attr("opacity",(l) => {
                     if(typeof l.source === "string" || typeof l.target === "string") return 0
                     const sourceAndTargetAncestors = ancestors.includes(l.source.node.id) && ancestors.includes(l.target.node.id);
-                    return sourceAndTargetAncestors ? 1 : 0;
+                    const sourceAndTargetAllAncestors = allAncestors.includes(l.source.node.id) && allAncestors.includes(l.target.node.id);
+                    return sourceAndTargetAncestors || sourceAndTargetAllAncestors ? 1 : 0;
+                })
+                .attr("stroke-width",(l) => {
+                    if(typeof l.source === "string") return 0;
+                    if(typeof l.target === "string") return 0;
+                    const sourceAndTargetAncestors = ancestors.includes(l.source.node.id) && ancestors.includes(l.target.node.id);
+                    const sourceAndTargetAllAncestors = allAncestors.includes(l.source.node.id) && allAncestors.includes(l.target.node.id);
+                    return sourceAndTargetAncestors || sourceAndTargetAllAncestors ? CHAIN_CIRCLE_RADIUS/10 : 0;
                 })
         }
 
@@ -608,10 +622,16 @@ export const drawChainForce = (
 
 
         const tooltipText = getTooltipText(d);
+        const tooltipLineCount = tooltipText.split("<br>").length;
+        let tooltipY = event.layerY - (tooltipLineCount* 7);
+        if((tooltipY + (tooltipLineCount * 14)) > (svgHeight * 0.8)){
+            tooltipY = event.layerY - (tooltipLineCount* 14)
+        }
+
         d3.select("#chainChartTooltip")
             .style("visibility","visible")
-            .style("left",`${event.offsetX + CHAIN_CIRCLE_RADIUS + 5}px`)
-            .style("top",`${event.offsetY + 20}px`)
+            .style("left",`${event.layerX + CHAIN_CIRCLE_RADIUS + 5}px`)
+            .style("top",`${tooltipY}px`)
             .html(tooltipText)
     })
         .on("mouseout",(event,d) => {
@@ -631,8 +651,17 @@ export const drawChainForce = (
                 mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".linkPath")
                     .attr("opacity",1);
 
-                mainGraphSvg.selectAll<SVGGElement, NetworkNode>(".linkChainPath")
-                    .attr("opacity",1);
+                mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".networkChainNodeLabel")
+                    .attr("opacity",0);
+
+
+                mainGraphSvg.selectAll<SVGPathElement, NetworkLink>(".linkChainPath")
+                    .attr("opacity",1)
+                    .attr("stroke-width",(l) => {
+                        if(typeof l.source === "string") return 0;
+                        if(typeof l.target === "string") return 0;
+                        return ancestors.includes(l.source.node.id) && ancestors.includes(l.target.node.id) ? CHAIN_CIRCLE_RADIUS/10 : 0;
+                    });
               }
 
             svg.selectAll<SVGCircleElement, ChainNode>(".nodeBackgroundCircle")
