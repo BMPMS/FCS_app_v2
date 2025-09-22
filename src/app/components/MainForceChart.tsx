@@ -2,7 +2,7 @@
 
 import * as d3 from 'd3';
 import {FC, useRef, useEffect, useState} from "react";
-import {ChartData, ChartLink, NetworkLink, NetworkNode} from "@/types/data";
+import {ChartData, ChartLink, Network, NetworkLink, NetworkNode} from "@/types/data";
 import {
     drawVoronoiTree,
     drawZoomButtons,
@@ -13,6 +13,7 @@ import {CHAIN_CIRCLE_RADIUS} from "@/app/components/ChainForceChart";
 
 export const MAX_CIRCLE_RADIUS = 75;
 export const COLORS = {
+    lightestgrey: "#F8F8F8",
     lightgreen: "#a1d99b",
     midgreen: "#41ab5d",
     darkgreen: "#006d2c",
@@ -26,7 +27,9 @@ export const COLORS = {
     midgrey: "#C0C0C0",
     darkgrey: "#808080",
     black: "#484848",
-    gold:"gold"
+    gold:"gold",
+    darkerGrey: "#909090",
+    arrowGrey: "#909090"
 };
 
 export const NODEFLOW_COLORS = {
@@ -74,7 +77,8 @@ export const ICONS = {
     zoomIn:"\uf00e",
     collapsed:"\uf054",
     expanded:"\uf078",
-    tick: "\uf00c"
+    tick: "\uf00c",
+    down: "\uf354"
 };
 
 export const MAIN_CHART_PANEL_HEIGHT = 45;
@@ -140,7 +144,18 @@ const MainForceChart: FC<MainForceChartProps> = ({
         },[] as ChartLink[])
 
        const currentNetworks = chartData.networks
-           .filter((f) => currentArchitecture.layers.find((l) => l.network === f.id));
+           .reduce((acc,entry) => {
+               const currentLayer = currentArchitecture.layers.find((l) => l.network === entry.id);
+               if(currentLayer){
+                   acc.push({
+                       id: entry.id,
+                       data: entry.data,
+                       layer: currentLayer.layer
+                   })
+               }
+               return acc;
+           }, [] as { id: string, data: Network, layer: number }[])
+           .sort((a,b) =>  d3.ascending(a.layer,b.layer))
 
         baseSvg.attr('width', svgWidth)
             .attr('height', svgHeight)
@@ -174,7 +189,7 @@ const MainForceChart: FC<MainForceChartProps> = ({
         const chartWidth = svgWidth - margins.left - margins.right;
         const chartHeight = svgHeight - margins.top - margins.bottom;
 
-        drawVoronoiTree(svg,currentNetworks,architectureLinks,chartWidth,chartHeight,margins, containerClass,chainContainerClass,simulation.current);
+        drawVoronoiTree(svg,currentNetworks,architectureLinks,chartWidth,chartHeight,margins, containerClass,chainContainerClass,simulation.current,svgWidth);
 
         const nodeCount = d3.sum(currentNetworks,(d) => d.data.nodes.length);
 

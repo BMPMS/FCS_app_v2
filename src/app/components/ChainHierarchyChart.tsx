@@ -56,9 +56,9 @@ const ChainHierarchyChart: FC<ChainHierarchyChartProps> = ({
             .attr('height', svgHeight);
 
         if(currentGraph){
-            const {nodes} = chainChartData;
+            const {nodes,links} = chainChartData;
             const treeData = getHierarchyData(searchNodes,currentGraph,searchDirection);
-            drawTreeChart(svg,svgWidth,treeData,nodes);
+            drawTreeChart(svg,svgWidth,treeData,nodes,links,mainContainerClass,currentGraph,searchNodes,svgHeight);
         }
 
 
@@ -69,7 +69,7 @@ const ChainHierarchyChart: FC<ChainHierarchyChartProps> = ({
 
     return (
         <>
-            <div id="chainChartTooltip" className={"chartTooltip"}/>
+            <div id="chainHierarchyChartTooltip" className={"chartTooltip"}/>
                 <svg className={`noselect svg_${containerClass}Hierarchy`} ref={ref}>
                     <defs className={"arrowDefs"}>
                     </defs>

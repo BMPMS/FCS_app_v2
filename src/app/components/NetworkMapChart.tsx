@@ -15,7 +15,7 @@ type NetworkMapChartProps = {
     architectureId: number;
 }
 
-export const CHAIN_CIRCLE_RADIUS = 12;
+export const LAYER_COLOUR_RANGE = ["#F8F8F8","#D8D8D8"];
 
 const ChainForceChart: FC<NetworkMapChartProps> = ({
                                                                  containerClass,
@@ -57,7 +57,6 @@ const ChainForceChart: FC<NetworkMapChartProps> = ({
         const {clientWidth: mainChartWidth} = mainContainerNode;
 
         svg.attr('width', svgWidth )
-            .style("background-color","#F0F0F0")
             .attr('height', svgHeight)
 
         drawArrowDefs(svg,containerClass,["arrowEndDark"],12);
@@ -101,10 +100,12 @@ const ChainForceChart: FC<NetworkMapChartProps> = ({
 
     return (
         <>
+            <div id="networkMapChartTooltip" className={"chartTooltip"}/>
             <svg className={`noselect svg_${containerClass}`} ref={ref}>
                 <defs className={"arrowDefs"}>
                 </defs>
                 <g className={"chartGroup"}>
+                    <g className={"layerGroup"}/>
                     <g className={"linkGroup"}/>
                     <g className={"nodeGroup"}/>
                 </g>

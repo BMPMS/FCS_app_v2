@@ -2,8 +2,8 @@ import * as d3 from 'd3';
 import {
     ChainNode,
     ChartLink,
-    ChartNode,
-    Network, NetworkLink, NetworkNode, TreeData, VoronoiNode,
+    ChartNode, CompleteVoronoiNode,
+    Network, NetworkLink, NetworkNode, PolygonWithSite, TreeData, VoronoiNode,
 } from "@/types/data";
 import {
     COLORS,
@@ -13,12 +13,14 @@ import {
 import {CHAIN_CIRCLE_RADIUS, NODE_HIGHLIGHT_STROKE_WIDTH} from "@/app/components/ChainForceChart";
 // @ts-expect-error no typescript definition for voronoiTreemap
 import { voronoiTreemap } from 'd3-voronoi-treemap';
-import seedrandom from 'seedrandom';
+// @ts-expect-error no typescript definition for voronoiTreemap
+import {voronoiMapSimulation} from 'd3-voronoi-map';
 import {BaseType} from "d3";
 import {getTooltipText, measureWidth} from "@/app/components/ChainForceChart_functions";
 // @ts-expect-error no typescript definition for clipper-lib
 import ClipperLib from 'clipper-lib';
 import {getNodeRadiusAndLabelSize} from "@/app/components/sharedFunctions";
+import {LAYER_COLOUR_RANGE} from "@/app/components/NetworkMapChart";
 
 type GetZoomCalculations = {
     nodes: ChartNode[];
@@ -157,7 +159,7 @@ export const trimPathToRadius = (
     pathD: string,
     sourceRadius: number = 0,
     targetRadius: number = 0
-): string => {
+) => {
     const svgNS = "http://www.w3.org/2000/svg";
 
     // Create a temporary SVG path element
@@ -179,7 +181,7 @@ export const trimPathToRadius = (
     document.body.removeChild(tempPath);
 
     // Return a new line path
-    return `M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`;
+    return {startPoint,endPoint};
 }
 
 
@@ -206,7 +208,29 @@ const getTreeData = (networks: { id: string, data: Network}[]) => networks.reduc
         return acc;
     }, [] as TreeData[])
 
-export const getVoronoi = (rootChildren: TreeData[], dataPoints:[number, number][]) => {
+
+const runVoronoi = async (chartData: TreeData[], dataPoints: [number,number][]) => {
+    const voronoiSimulation = voronoiMapSimulation(chartData)
+        .weight((d: TreeData) => d.value)
+        .initialPosition((d: TreeData) => d.startPosition)
+        .clip(dataPoints);
+
+    let state = voronoiSimulation.state();
+
+    // Step through simulation with async yielding
+    while (!state.ended) {
+        voronoiSimulation.tick();
+        state = voronoiSimulation.state();
+    }
+
+    return state.polygons as PolygonWithSite[];
+}
+export const getVoronoi = async (
+    rootChildren: TreeData[],
+    dataPoints:[number, number][],
+    chartWidth: number,
+    chartHeight: number
+) => {
     const value = d3.sum(rootChildren, (s) => s.value);
     const root = d3.hierarchy<TreeData>({
         name: "root",
@@ -216,12 +240,76 @@ export const getVoronoi = (rootChildren: TreeData[], dataPoints:[number, number]
     })
         .sum((s) => s.value);
 
-    const rng = seedrandom('40');
-    const voronoiTreemapInstance = voronoiTreemap().prng(rng).clip(dataPoints);
 
-    voronoiTreemapInstance(root);
+    const treemapLayout = d3
+        .treemap<TreeData>()
+        .size([chartWidth, chartHeight])
+        .tile(d3.treemapBinary) // or d3.treemapSquarify
+        .padding(1);
 
-    return root.descendants().filter((f) => f.depth > 0) as VoronoiNode<TreeData>[];
+    treemapLayout(root);
+
+    const testChartData = root.descendants().reduce((acc, entry) => {
+        const treeNode = entry as d3.HierarchyRectangularNode<TreeData>;
+        if (entry.depth === 1 && entry.value && entry.children) {
+            acc.push({
+                name: entry.data.name,
+                description: entry.data.description,
+                value: entry.value,
+                children: entry.children.map((m) => m.data),
+                startPosition: [
+                    treeNode.x0 + (treeNode.x1 - treeNode.x0) / 2,
+                    treeNode.y0 + (treeNode.y1 - treeNode.y0) / 2
+                ]
+            });
+        }
+        return acc;
+    }, [] as TreeData[]);
+
+
+    const polygons = await runVoronoi(testChartData, dataPoints);
+
+    return  polygons.reduce((acc, entry) => {
+        const originalIndex = entry.site.originalObject?.index || 0;
+        const originalData = rootChildren[originalIndex];
+        if(originalData.children){
+            const children = originalData.children.reduce((childAcc, child) => {
+                childAcc.push({
+                    name: child.name,
+                    network: originalData.name,
+                    description: `depth-${child.name}`,
+                    data: child.data,
+                    value: child.value
+                });
+                return childAcc;
+            }, [] as TreeData[]);
+            const polygonVoronoi = voronoiTreemap().clip(entry);
+            const totalValue = d3.sum(children,(s) => s.value)
+            const hierarchy = d3
+                .hierarchy<TreeData>({ name: "root",description:"", children,value: totalValue })
+                .sum((s) => s.value);
+            polygonVoronoi(hierarchy);
+            if(hierarchy.children){
+                hierarchy.children.forEach((child) => {
+                    const voronoiChild = child as VoronoiNode<TreeData>;
+                    acc.push({
+                        depth: 2,
+                        data: child.data,
+                        polygon: voronoiChild.polygon,
+                        parent: originalData
+                    });
+                });
+            }
+        }
+        acc.push({
+            depth: 1,
+            data: originalData,
+            polygon: entry,
+            children: true
+        });
+        return acc;
+    }, [] as CompleteVoronoiNode[]);
+
 }
 
 function offsetPolygon(polygon: [number, number][], padding: number) {
@@ -243,19 +331,21 @@ function offsetPolygon(polygon: [number, number][], padding: number) {
 }
 
 
-export const drawVoronoiTree = (
+export const drawVoronoiTree = async (
     svg: d3.Selection<BaseType, unknown, HTMLElement, unknown>,
-    currentNetworks: { id: string, data: Network}[],
+    currentNetworks: { id: string, data: Network, layer: number}[],
     architectureLinks: ChartLink[],
     chartWidth: number,
     chartHeight: number,
     margins: {[key: string] : number},
     containerClass: string,
     chainContainerClass: string,
-    simulation: d3.Simulation<NetworkNode, NetworkLink>
+    simulation: d3.Simulation<NetworkNode, NetworkLink>,
+    svgWidth: number
 ) => {
-    const gapFill = "#F0F0F0";
+    const gapFill = "white";
     const networkFill = "white";
+
 
     const treeData = getTreeData(currentNetworks);
 
@@ -266,13 +356,13 @@ export const drawVoronoiTree = (
         [0, chartHeight]
     ];
 
-    const allNodes = getVoronoi(treeData, chartPath);
+    const allNodes = await getVoronoi(treeData, chartPath,chartWidth,chartHeight);
 
     const networkNodes = allNodes
         .filter((f) => f.depth === 2)
         .reduce((acc, entry) => {
-            const network = entry.parent === null ? "" : entry.parent.data.name;
-            if(entry.data.data){
+            if(entry.data.data && entry.data.network ){
+                const network = entry.data.network;
                 entry.data.data.forEach((node: ChartNode) => {
                     acc.push({
                         network,
@@ -328,42 +418,42 @@ export const drawVoronoiTree = (
     linkGroup.select(".linkChainPath")
         .attr("fill","transparent")
         .attr("stroke-width",0)
-        .attr("stroke",COLORS.lightgrey)
+        .attr("stroke",COLORS.darkgrey)
         .attr("marker-end",`url(#arrowEndGrey${containerClass})`)
+
+
 
     const nodeGroup = svg
         .select(".nodesGroup")
         .selectAll(".nodeGroup")
-        .data(allNodes)
+        .data(allNodes.sort((a,b) => d3.ascending(a.depth, b.depth)))
         .join((group) => {
             const enter = group.append("g").attr("class", "nodeGroup");
             enter.append("path").attr("class", "voronoiPath");
             return enter;
         });
 
+    const uniqueLayers = [...new Set(currentNetworks.map((m) => m.layer))];
 
+    const getNetworkFill = (node: CompleteVoronoiNode) => {
+        if(node.depth > 1) return "transparent";
+        const matchingNetworkIndex = currentNetworks.findIndex((f) => f.id === node.data.name);
+        const layerColor = d3.scaleLinear<string>()
+            .domain([0, uniqueLayers.length - 1])
+            .range(LAYER_COLOUR_RANGE);
+        return layerColor(matchingNetworkIndex);
+
+
+    }
     nodeGroup
         .select(".voronoiPath")
         .attr("cursor", "pointer")
         .attr("d", (d) => `M${d.polygon.join(",")}Z`)
         .attr("stroke", gapFill)
         .attr("stroke-width", (d) => (d.depth === 1 ? 10 : 4))
-        .attr("fill", (d) => (d.depth > 1 ? "transparent" : networkFill))
+        .attr("fill", getNetworkFill)
         .attr("transform",`translate(${margins.left},${margins.top})`)
-        .on("mousemove", (event, d) => {
-            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
-            if(chainGraphSVG.node()){
-                chainGraphSVG.selectAll<SVGPathElement, NetworkNode>(".networkRect")
-                    .attr("fill", (n) =>  d.parent && n.network === d.parent.data.name ? COLORS.midgrey : "white")
-            }
-        })
-        .on("mouseout", () => {
-            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
-            if(chainGraphSVG.node()) {
-                chainGraphSVG.selectAll(".networkRect")
-                    .attr("fill", "white");
-            }
-        });
+
 
     const voronoiLabelHeight = labelFontSize * 0.95;
 
@@ -378,11 +468,27 @@ export const drawVoronoiTree = (
             return enter;
         });
 
-    nodeLabelGroup.attr("transform",`translate(${margins.left},${margins.top})`);
+    const voronoiLabelTransform = (node: CompleteVoronoiNode) => {
+        let translateLeft = margins.left;
+
+        const labelWidth = measureWidth(node.data.name, labelFontSize)
+        const xPos = node.polygon.site.x - labelWidth / 2;
+
+        if(xPos < 0){
+            translateLeft += Math.abs(xPos);
+        }
+        if((xPos + labelWidth) > svgWidth){
+            translateLeft -= (xPos + labelWidth) - svgWidth + 10
+        }
+        return `translate(${translateLeft},${margins.top})`
+    }
+
+    nodeLabelGroup.attr("transform",voronoiLabelTransform)
+
+
 
     nodeLabelGroup
         .select(".voronoiLabelRect")
-        .attr("pointer-events", "none")
         .attr("width", (d) =>
             d.children ? measureWidth(d.data.name, labelFontSize) : 0
         )
@@ -391,12 +497,39 @@ export const drawVoronoiTree = (
         .attr("y", -voronoiLabelHeight/2)
         .attr("rx", 2)
         .attr("ry", 2)
+        .attr("stroke-width",0.5)
+        .attr("stroke",COLORS.darkerGrey)
         .attr("fill", networkFill)
         .attr(
             "transform",
             (d) => `translate(${d.polygon.site.x},${d.polygon.site.y})`
         )
-        .text((d) => (d.depth === 1 ? d.data.name : 0));
+        .text((d) => (d.depth === 1 ? d.data.name : 0))
+        .attr("cursor","pointer")
+        .on("mousemove", (event, d) => {
+            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
+            if(chainGraphSVG.node()){
+                chainGraphSVG.selectAll<SVGPathElement, NetworkNode>(".networkRect")
+                    .attr("fill", (n) =>   d.data.name  === n.network ? COLORS.midgrey : "white");
+                d3.select(event.currentTarget)
+                    .attr("fill",COLORS.midgrey);
+                d3.select("#mainChartTooltip")
+                    .style("visibility","visible")
+                    .style("left",`${event.offsetX - measureWidth(d.data.description,12)/2}px`)
+                    .style("top",`${event.offsetY - 40}px`)
+                    .html(d.data.description);
+            }
+        })
+        .on("mouseout", () => {
+            d3.select("#mainChartTooltip").style("visibility","hidden");
+            svg.selectAll(".voronoiLabelRect")
+                .attr("fill","white");
+            const chainGraphSVG = d3.select(`.svg_${chainContainerClass}`);
+            if(chainGraphSVG.node()) {
+                chainGraphSVG.selectAll(".networkRect")
+                    .attr("fill", "white");
+            }
+        });;
 
     nodeLabelGroup
         .select(".voronoiLabel")
@@ -541,9 +674,11 @@ export const drawVoronoiTree = (
         .text((d) => d.node.id.split("-")[0])
         .attr("transform",`translate(${margins.left},${margins.top})`);
 
+
+
+
     simulation
         .on("tick", () => {
-
         svg.selectAll<SVGGElement,NetworkNode>(".networkNodeGroup")
             .attr("transform", (d) => {
                 const smallerPolygon = offsetPolygon(d.polygon, nodeRadius * 2.75);
@@ -560,16 +695,39 @@ export const drawVoronoiTree = (
 
         svg.selectAll<SVGPathElement,NetworkLink>(".linkPath")
             .attr("d",(d) => {
-                if(typeof d.source === "string" || typeof d.target === "string") return "";
-                const originalPath = `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`;
-                return trimPathToRadius(originalPath,nodeRadius,nodeRadius)
+                const {source, target} = d;
+                if(typeof source === "string" || typeof target === "string") return "";
+                const {x: sourceX, y: sourceY} = source;
+                const {x: targetX, y: targetY} = target;
+                // verbose as !sourceX catches 0
+                if(sourceX !== undefined && sourceY !== undefined && targetX !== undefined && targetY !== undefined){
+                    const originalPath = `M${sourceX},${sourceY} L${targetX},${targetY}`;
+                    const {startPoint, endPoint} = trimPathToRadius(originalPath,nodeRadius,nodeRadius);
+                    const dx = endPoint.x - startPoint.x;
+                    const dy = endPoint.y - startPoint.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy) * 2;
+                    return `M${startPoint.x},${startPoint.y}A${dr},${dr} 0 0,1 ${endPoint.x},${endPoint.y}`;
+                }
+                return "";
+
             })
 
         svg.selectAll<SVGPathElement,NetworkLink>(".linkChainPath")
             .attr("d",(d) => {
-                if(typeof d.source === "string" || typeof d.target === "string") return "";
-                const originalPath = `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`;
-                return trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS)
+                const {source, target} = d;
+                if(typeof source === "string" || typeof target === "string") return "";
+                const {x: sourceX, y: sourceY} = source;
+                const {x: targetX, y: targetY} = target;
+                // verbose as !sourceX catches 0
+                if(sourceX !== undefined && sourceY !== undefined && targetX !== undefined && targetY !== undefined){
+                    const originalPath = `M${sourceX},${sourceY} L${targetX},${targetY}`;
+                    const {startPoint, endPoint} = trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS);
+                    const dx = endPoint.x - startPoint.x;
+                    const dy = endPoint.y - startPoint.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy)*2;
+                    return `M${startPoint.x},${startPoint.y}A${dr},${dr} 0 0,1 ${endPoint.x},${endPoint.y}`;
+                }
+                return "";
             })
     })
 
@@ -581,7 +739,7 @@ export const drawVoronoiTree = (
     if(linkForce){
         linkForce.links([]);
         linkForce.links(networkLinks);
-    };
+    }
 
     simulation.stop();
     simulation.alphaDecay(0.05)

@@ -7,6 +7,7 @@ import {COLORS, NODEFLOW_COLORS, NODETYPE_ICON_NAMES, NODETYPE_ICONS} from "@/ap
 import {trimPathToRadius} from "@/app/components/MainForceChart_functions";
 import {CHAIN_CIRCLE_RADIUS, NODE_HIGHLIGHT_STROKE_WIDTH} from "@/app/components/ChainForceChart";
 import {DirectedGraph} from 'graphology';
+import {HierarchyEntry} from "@/app/components/ChainHierarchyChart_functions";
 
 export const handleAnimationFlow = (
     svg:d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown>,
@@ -391,7 +392,7 @@ const getNodeOpacity = (d: ChainNode, nodeSelection: string[], isMouseover: bool
     return 0.2;
 }
 
-const getAncestors = (nodeId: string, nodes: ChainNode[], links: ChainLink[]) => {
+export const getChainAncestors = (nodeId: string, nodes: ChainNode[], links: ChainLink[]) => {
     const graph = new DirectedGraph();
 
 
@@ -417,17 +418,18 @@ const getAncestors = (nodeId: string, nodes: ChainNode[], links: ChainLink[]) =>
     return Array.from(allInbound);
 }
 
-export const getTooltipText = (node: ChainNode | ChartNode) => {
+export const getTooltipText = (node: ChainNode | ChartNode | HierarchyEntry) => {
     const iconClass = NODETYPE_ICON_NAMES[node.type as keyof typeof NODETYPE_ICON_NAMES];
     const classColor = NODEFLOW_COLORS[node.class as keyof typeof NODEFLOW_COLORS];
-    const {0: id, 1: network} = node.id.split("-")
+
+    const {0: id, 1: network} = (node.id || "").split("-")
     let tooltipText = `<strong>${id}</strong><br>`;
     tooltipText += `<span style="color: ${COLORS.darkgrey}">network:</span> ${network}<br>`;
     tooltipText += `<span style="color: ${classColor}; font-weight: bolder;"> ${node.class}</span><br>`;
     tooltipText += `<span style="color: ${COLORS.darkgrey}">type:</span> <i class='${iconClass}'></i>`
     tooltipText += ` ${node.type}<br>`;
     if(node.type === "comp"){
-        const alteredDesc = node.desc
+        const alteredDesc = (node.desc || "")
             .replace(/</g,'&lt;')
             .replace(/>/g,'&gt;')
             .replace(/\\n/g,'<br>');
@@ -439,7 +441,7 @@ export const getTooltipText = (node: ChainNode | ChartNode) => {
 
 }
 
-const getAllAncestors = (
+export const getAllChainAncestors = (
     graph:  Graph<Attributes, Attributes, Attributes>,
     nodeId: string,
     currentAncestors: string[]
@@ -492,6 +494,7 @@ export const drawChainForce = (
         .attr("id", (d) => `linkPath${d.id}`)
         .attr("pointer-events","none")
         .attr("stroke-width", 0.75)
+        .attr("fill","none")
         .attr("stroke",  (d) => d.type === "architecture" ? "#D0D0D0": "#808080")
         .attr("stroke-dasharray", (d)=>  d.type === "suppress" ? "4,2" :"")
 
@@ -499,6 +502,7 @@ export const drawChainForce = (
         .select(".linkAnimatePath")
         .attr("id", (d) => `linkAnimatePath${d.id}`)
         .attr("stroke-width",  1.5)
+        .attr("fill","none")
         .attr("stroke-opacity", 0)
         .attr("stroke", (d) =>
             d.type === "suppress"
@@ -554,14 +558,14 @@ export const drawChainForce = (
     const mainGraphSvg = d3.select(`.svg_${mainContainerClass}`);
 
     nodesGroup.on("mousemove", (event, d) => {
-        const ancestors = getAncestors(d.id,nodes, links);
+        const ancestors = getChainAncestors(d.id,nodes, links);
         let currentFill = d3.select(event.currentTarget).select(".nodeCircle").attr("fill");
         if(currentFill.includes("rgb")){
             currentFill = rgbStringToHex(currentFill);
         }
         let allAncestors: string[] = [];
         if(currentFill === COLORS.red){
-            allAncestors = getAllAncestors(currentGraph,d.id,ancestors);
+            allAncestors = getAllChainAncestors(currentGraph,d.id,ancestors);
         }
 
         if(mainGraphSvg.node()) {
@@ -636,7 +640,7 @@ export const drawChainForce = (
     })
         .on("mouseout",(event,d) => {
             if(mainGraphSvg.node()) {
-                const ancestors = getAncestors(d.id,nodes, links);
+                const ancestors = getChainAncestors(d.id,nodes, links);
                 mainGraphSvg.selectAll<SVGCircleElement, NetworkNode>(".networkChainNodeIcon")
                     .attr("opacity",(n) =>  ancestors.includes(n.node.id) ?  1 : 0)
 
@@ -717,7 +721,11 @@ export const drawChainForce = (
                 const {x: targetX, y: targetY} = target;
                 if(!sourceX || !sourceY || !targetX || !targetY) return "";
                 const originalPath = `M${sourceX},${sourceY} L${targetX},${targetY}`;
-                return trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS );
+                const {startPoint, endPoint} =  trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS );
+                const dx = endPoint.x - startPoint.x;
+                const dy = endPoint.y - startPoint.y;
+                const dr = Math.sqrt(dx * dx + dy * dy) * 2;
+                return `M${startPoint.x},${startPoint.y}A${dr},${dr} 0 0,1 ${endPoint.x},${endPoint.y}`
             })
 
         svg
@@ -729,7 +737,11 @@ export const drawChainForce = (
                 const {x: targetX, y: targetY} = target;
                 if(!sourceX || !sourceY || !targetX || !targetY) return ""
                 const originalPath =  `M${sourceX },${sourceY} L${targetX },${targetY }`;
-                return trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS + 5);
+                const {startPoint, endPoint} = trimPathToRadius(originalPath,CHAIN_CIRCLE_RADIUS,CHAIN_CIRCLE_RADIUS + 5);
+                const dx = endPoint.x - startPoint.x;
+                const dy = endPoint.y - startPoint.y;
+                const dr = Math.sqrt(dx * dx + dy * dy) * 2;
+                return `M${startPoint.x},${startPoint.y}A${dr},${dr} 0 0,1 ${endPoint.x},${endPoint.y}`
             })
 
         svg.selectAll<SVGGElement,ChainNode>(".nodesGroup")
@@ -750,6 +762,7 @@ export const drawChainForce = (
     simulation.tick(500);
 
     svg.selectAll<SVGPathElement,ChartLink>(".linkLine")
+        .attr("fill","none")
         .attr("stroke",  (d) => d.type === "architecture" ? "#D0D0D0": "#808080")
         .attr("marker-end", `url(#arrowEndGrey${containerClass})`)
 }

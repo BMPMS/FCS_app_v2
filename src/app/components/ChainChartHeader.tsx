@@ -43,7 +43,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
    const currentArchitectureId: React.RefObject<number> = useRef(-1);
     const currentGraph: React.RefObject< Graph<Attributes, Attributes, Attributes> | undefined> = useRef(undefined);
     const [chainChartData, setChainChartData] = useState<{nodes: ChainNode[],links:ChainLink[]}>({nodes:[],links:[]});
-    const [selectedChart, setSelectedChart] = useState<"chain" | "menu">("chain");
+    const [selectedChart, setSelectedChart] = useState<"chain" | "menu">("menu");
 
     const ref = useRef(null);
     const chainForceRef = useRef<ChartHandle>(null);
@@ -142,7 +142,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
             .text(`${allNodes.length} nodes`)
 
         headerSvg.select(".playButton")
-            .attr("visibility", selectedChart === "chain" ? "visible" : "hidden")
+         //   .attr("visibility", selectedChart === "chain" ? "visible" : "hidden")
             .attr("fill","white")
             .attr("stroke",COLORS.midgrey)
             .attr("r", searchDirection === "input" ? CHAIN_CIRCLE_RADIUS : 0)
@@ -166,7 +166,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
 
         headerSvg
             .select(".playButtonIcon")
-            .attr("visibility", selectedChart === "chain" ? "visible" : "hidden")
+           // .attr("visibility", selectedChart === "chain" ? "visible" : "hidden")
             .attr("pointer-events","none")
             .attr("x",buttonSize + 6)
             .attr("y", buttonSize + 5)
@@ -181,7 +181,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
             .attr("stroke",selectedChart === "chain" ? COLORS.gold: COLORS.midgrey)
             .attr("stroke-width",selectedChart === "chain" ? 2.5:1)
             .attr("r", searchDirection === "input" ? CHAIN_CIRCLE_RADIUS : 0)
-            .attr("cx",svgWidth - (buttonSize * 4) - 5)
+            .attr("cx",svgWidth - (buttonSize * 2) - 5)
             .attr("cy", buttonSize + 5)
             .attr("cursor","pointer")
             .on("mouseover", (event) => {
@@ -197,7 +197,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
         headerSvg
             .select(".chainViewButtonIcon")
             .attr("pointer-events","none")
-            .attr("x",svgWidth - (buttonSize * 4) - 5 )
+            .attr("x",svgWidth - (buttonSize * 2) - 4)
             .attr("y", 5 + buttonSize - 0.25)
             .attr("font-size",  buttonSize * 0.9)
             .attr("fill", COLORS.darkgrey)
@@ -211,7 +211,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
             .attr("stroke",selectedChart === "menu" ? COLORS.gold: COLORS.midgrey)
             .attr("stroke-width",selectedChart === "menu" ? 2.5:1)
             .attr("r", searchDirection === "input" ? CHAIN_CIRCLE_RADIUS : 0)
-            .attr("cx",svgWidth - (buttonSize * 2) - 5)
+            .attr("cx",svgWidth - (buttonSize * 4) - 5)
             .attr("cy", buttonSize + 5)
             .attr("cursor","pointer")
             .on("mouseover", (event) => {
@@ -227,7 +227,7 @@ const ChainChartHeader: FC<ChainChartHeaderProps> = ({
         headerSvg
             .select(".menuViewButtonIcon")
             .attr("pointer-events","none")
-            .attr("x",svgWidth - (buttonSize * 2) - 4)
+            .attr("x",svgWidth - (buttonSize * 4) - 5 )
             .attr("y", buttonSize + 5)
             .attr("font-size", buttonSize * 0.9)
             .attr("fill", COLORS.darkgrey)

@@ -1,7 +1,8 @@
 import * as d3 from "d3";
-import {Network, TreeData, VoronoiNode} from "../../types/data";
+import {CompleteVoronoiNode, Network} from "../../types/data";
 import {COLORS} from "@/app/components/MainForceChart";
 import {measureWidth} from "@/app/components/ChainForceChart_functions";
+import {LAYER_COLOUR_RANGE} from "@/app/components/NetworkMapChart";
 
 export const drawNetworkMap = (
     svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown>,
@@ -16,12 +17,15 @@ export const drawNetworkMap = (
 
 ) => {
 
-
     const layerData = Array.from(d3.group(networkNodes, (g) => layerMapper[g.network]))
         .sort((a,b) => d3.ascending(a[0],b[0]));
 
     const layerExtent = d3.extent(layerData, (d) => d[0]);
-    const yScale = d3.scaleLinear().domain([layerExtent[0] || 0, (layerExtent[1]  || 0) + 1]).range([0,svgHeight])
+    const yScale = d3.scaleLinear()
+        .domain([layerExtent[0] || 0, (layerExtent[1]  || 0) + 1])
+        .range([0,svgHeight]);
+
+    const yScaleBandwidth = svgHeight/layerData.length;
 
     const totalLayers = (layerExtent[1] || 0) - (layerExtent[0] || 0);
     const layerHeight = svgHeight/(totalLayers + 1);
@@ -42,18 +46,30 @@ export const drawNetworkMap = (
         return acc;
     },{} as {[key: string] : {x: number, y: number}});
 
+    const layerColor = d3.scaleLinear<string>()
+        .domain([0, layerData.length - 1])
+        .range(LAYER_COLOUR_RANGE);
 
     // for each layer within architecture
-    const layersGroup = svg.select(".nodeGroup")
+    const layersGroup = svg.select(".layerGroup")
         .selectAll(".layerGroup")
         .data(layerData)
         .join((group) => {
             const enter = group.append("g").attr("class", "layerGroup");
+            enter.append("rect").attr("class", "layerRect");
             enter.append("line").attr("class", "layerLine");
             enter.append("text").attr("class", "layerLabel");
             enter.append("g").attr("class", "networksGroup");
             return enter;
         });
+
+    layersGroup.select(".layerRect")
+        .attr("x",0)
+        .attr("height",yScaleBandwidth)
+        .attr("width",svgWidth)
+        .attr("fill",(d,i) => layerColor(i))
+        .attr("stroke-width",0)
+        .attr("transform", (d) => `translate(0,${yScale(d[0] || 0)})`);
 
 
     layersGroup.select(".layerLine")
@@ -61,8 +77,7 @@ export const drawNetworkMap = (
         .attr("x2",svgWidth)
         .attr("stroke","white")
         .attr("stroke-width",1.5)
-        .attr("transform", (d) => `translate(0,${yScale(d[0] || 0)})`)
-    ;
+        .attr("transform", (d) => `translate(0,${yScale(d[0] || 0)})`);
 
     layersGroup.select(".layerLabel")
         .attr("x",5)
@@ -79,7 +94,7 @@ export const drawNetworkMap = (
         .join((group) => {
             const enter = group.append("g").attr("class", "networkGroup");
             enter.append("rect").attr("class", "networkRect");
-            enter.append("text").attr("class", "networkRectLabel");
+           enter.append("text").attr("class", "networkRectLabel");
             return enter;
         });
 
@@ -90,20 +105,32 @@ export const drawNetworkMap = (
         .on("mousemove", (event, d) => {
             const mainGraphSvg = d3.select(`.svg_${mainContainerClass}`);
             if(mainGraphSvg.node()){
-                mainGraphSvg.selectAll<SVGPathElement, VoronoiNode<TreeData>>(".voronoiPath")
-                    .attr("fill", (v) =>  v.parent && v.parent.data.name === d.network ? COLORS.midgrey : "white")
+                mainGraphSvg.selectAll<SVGPathElement, CompleteVoronoiNode>(".voronoiLabelRect")
+                    .attr("fill", (v) =>  v.data.name === d.network ? COLORS.darkerGrey : "white")
+
+                d3.select(event.currentTarget)
+                    .select(".networkRect")
+                    .attr("fill",COLORS.midgrey);
+                d3.select("#networkMapChartTooltip")
+                    .style("visibility","visible")
+                    .style("left",`${event.offsetX - measureWidth(d.network_desc,12)/2}px`)
+                    .style("top",`${event.offsetY - 40}px`)
+                    .html(d.network_desc);
             }
         })
         .on("mouseout", () => {
+            d3.select("#networkMapChartTooltip").style("visibility","hidden");
+            svg.selectAll(".networkRect").attr("fill","white");
             const mainGraphSvg = d3.select(`.svg_${mainContainerClass}`);
             if(mainGraphSvg.node()) {
-                mainGraphSvg.selectAll(".voronoiPath")
+                mainGraphSvg.selectAll<SVGPathElement, CompleteVoronoiNode>(".voronoiLabelRect")
                     .attr("fill", "white");
             }
         })
 
     networkGroup.select(".networkRect")
-        .attr("stroke-width", 0)
+        .attr("stroke-width", 0.5)
+        .attr("stroke",COLORS.darkerGrey)
         .attr("fill","white")
         .attr("rx", 5)
         .attr("ry",5)
@@ -132,13 +159,19 @@ export const drawNetworkMap = (
     linksGroup.select(".linkLine")
         .attr("marker-end",`url(#arrowEndDark${containerClass})`)
         .attr("stroke",COLORS.midgrey)
+        .attr("fill","transparent")
         .attr("stroke-width",0.75)
         .attr("d", (d) => {
             const sourcePosition = networkPositions[d.source as keyof typeof networkPositions];
             const targetPosition = networkPositions[d.target as keyof typeof networkPositions];
             const yTop = sourcePosition.y < targetPosition.y ? networkRectHeight/2 : -networkRectHeight/2;
             const yBottom = sourcePosition.y < targetPosition.y ? -networkRectHeight/2 : networkRectHeight/2;
-            return  `M${sourcePosition.x},${sourcePosition.y + yTop}L${targetPosition.x},${targetPosition.y + yBottom}`;
+            if(sourcePosition.x === targetPosition.x) return  `M${sourcePosition.x},${sourcePosition.y + yTop}L${targetPosition.x},${targetPosition.y + yBottom}`;
+            const dx = targetPosition.x - sourcePosition.x;
+            const dy = (targetPosition.y + yBottom) - (sourcePosition.y + yTop);
+            const dr = Math.sqrt(dx * dx + dy * dy) ;
+            const arc = targetPosition.x < sourcePosition.x ? "0 0, 0" : "0 0,1"
+            return `M${sourcePosition.x},${sourcePosition.y + yTop}A${dr},${dr} ${arc} ${targetPosition.x},${targetPosition.y + yBottom}`;
         })
 
 

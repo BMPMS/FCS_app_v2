@@ -50,11 +50,20 @@ export type TreeData = {
     value: number;
     children?: TreeData[];
     data?:  ChartNode[];
+    startPosition?: [number,number];
+    network?: string;
 }
 
-type PolygonWithSite = [number, number][] & { site: { x: number; y: number } };
+export type PolygonWithSite = [number, number][] & { site: { x: number; y: number,originalObject?:{index: number} } };
 export interface VoronoiNode<TreeData> extends d3.HierarchyNode<TreeData> {
     polygon: PolygonWithSite;
+}
+export interface CompleteVoronoiNode {
+    depth: number,
+    data: TreeData,
+    polygon: PolygonWithSite,
+    children?: boolean,
+    parent?: TreeData
 }
 export interface NetworkNode extends d3.SimulationNodeDatum  {
     network: string;
@@ -69,7 +78,7 @@ export interface NetworkNode extends d3.SimulationNodeDatum  {
 
 
 
-export type NetworkLink =
+export interface NetworkLink extends d3.SimulationLinkDatum<NetworkNode>
 {id: string;
     source: string | NetworkNode;
     target: string | NetworkNode;

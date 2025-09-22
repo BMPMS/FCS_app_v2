@@ -56,7 +56,7 @@ export const drawArrowDefs = (
         .attr("fill", (d) => {
             if(d.includes("Green")) return COLORS.midgreen;
             if(d.includes("Red")) return COLORS.red;
-            if(d.includes("Grey")) return COLORS.midgrey;
+            if(d.includes("Grey")) return COLORS.arrowGrey;
             return "#484848";
         })
         .attr("d",(d) => d.includes("Start") ? ARROW_START_PATH : ARROW_END_PATH)

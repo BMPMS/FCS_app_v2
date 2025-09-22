@@ -65,8 +65,8 @@ const ChainForceChart: ForwardRefRenderFunction<ChartHandle, ChainForceChartProp
 
         const containerNode = d3.select<Element, unknown>(`.${containerClass}Container`).node();
         if (!containerNode) return;
-
-        let {  clientHeight,  clientWidth: svgWidth } = containerNode;
+        const {  clientHeight} = containerNode;
+        let {   clientWidth: svgWidth } = containerNode;
         let svgHeight = clientHeight;
         const margin = {left: 10, right: 10, top: 5, bottom: 5};
         const {nodes,links} = chainChartData;
